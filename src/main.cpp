@@ -31,22 +31,6 @@ int precReadDigital() {
   return digitalRead(PREC_DIGITAL_PIN);
 }
 
-uint16_t precReadAnalogSmoothed() {
-  uint16_t leitura = analogRead(PREC_ANALOG_PIN);
-  prec_soma -= prec_buf[prec_idx];
-  prec_buf[prec_idx] = leitura;
-  prec_soma += leitura;
-  prec_idx = (prec_idx + 1) % PREC_N;
-  if (prec_idx == 0) prec_cheio = true;
-
-  return prec_cheio ? (prec_soma / PREC_N)
-                    : (prec_soma / (prec_idx == 0 ? 1 : prec_idx));
-}
-
-uint32_t precReadMilliVolts() {
-  return analogReadMilliVolts(PREC_ANALOG_PIN);
-}
-
 // =================== CONEXÃO REDE / MQTT ==================
 WiFiClient net;
 PubSubClient mqtt(net);
@@ -84,7 +68,7 @@ void setup() {
   precInit();
   ensureWiFi();
   ensureMqtt();
-  Serial.println("[APP] Pronto. Publicando leituras do sensor em /chuva/dados...");
+  Serial.println("[APP] Pronto. Publicando tempo sem chover em /chuva/dados...");
 }
 
 // ========================== LOOP ==========================
@@ -94,18 +78,34 @@ void loop() {
   mqtt.loop();
 
   static uint32_t lastPub = 0;
-  if (millis() - lastPub >= 1000) { // publica a cada 1 segundo
+
+  // Publica 1 vez por segundo
+  if (millis() - lastPub >= 1000) {
     lastPub = millis();
 
     int digitalValue = precReadDigital();
-    uint16_t analogValue = precReadAnalogSmoothed();
-    uint32_t voltage = precReadMilliVolts();
 
-    // Monta o payload JSON
+    // =================== TEMPO SEM CHUVA ===================
+    static uint32_t ultimoTempoChuva = millis();
+    uint32_t agora = millis();
+
+    if (digitalValue == 0) {
+      // Sensor digital = 0 → ESTÁ CHOVENDO → reset do contador
+      ultimoTempoChuva = agora;
+    }
+
+    uint32_t tempoSemChuva = (agora - ultimoTempoChuva) / 1000; // segundos sem chuva
+
+    // Captura o ID único da placa
+    uint64_t chipid = ESP.getEfuseMac();
+
+    // Monta o payload com APENAS o tempo sem chover
     char payload[128];
     snprintf(payload, sizeof(payload),
-             "{\"digital\":%d,\"analog\":%u,\"mv\":%lu}",
-             digitalValue, analogValue, voltage);
+      "{\"id\":\"%04X%08X\",\"sem_chuva_s\":%lu}",
+      (uint16_t)(chipid >> 32), (uint32_t)chipid,
+      tempoSemChuva
+    );
 
     // Publica no MQTT
     bool ok = mqtt.publish(TOPIC_PREC_ALL, payload);
