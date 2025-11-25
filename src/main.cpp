@@ -2,115 +2,149 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+
 // ===================== CONFIGURAÇÕES =====================
-#define PREC_DIGITAL_PIN 14
-#define PREC_ANALOG_PIN  32
+#define PREC_DIGITAL_PIN 14  
 
-// ---- Wi-Fi / MQTT ----
-const char *WIFI_SSID     = "uaifai-tiradentes";
-const char *WIFI_PASSWORD = "bemvindoaocesar";
-const char *MQTT_BROKER   = "172.26.67.82";
-const uint16_t MQTT_PORT  = 1883;
-const char *TOPIC_PREC_ALL = "/chuva/dados"; // único tópico com tudo
+const char *WIFI_SSID      = "uaifai-tiradentes";   
+const char *WIFI_PASSWORD  = "bemvindoaocesar";     
+const char *MQTT_BROKER    = "172.26.67.82";       
+const uint16_t MQTT_PORT   = 1883;
+const char *TOPIC_PREC_ALL = "/chuva/dados";        
 
-// ================= SENSOR DE PRECIPITAÇÃO =================
-static const int PREC_N = 10;
-static uint32_t prec_soma = 0;
-static uint16_t prec_buf[PREC_N];
-static int prec_idx = 0;
-static bool prec_cheio = false;
+WiFiClient espClient;
+PubSubClient mqttClient(espClient);
 
-void precInit() {
-  pinMode(PREC_DIGITAL_PIN, INPUT_PULLUP);
-  pinMode(PREC_ANALOG_PIN, INPUT);
-  analogSetPinAttenuation(PREC_ANALOG_PIN, ADC_11db);
-  for (int i = 0; i < PREC_N; i++) prec_buf[i] = 0;
+// ===================== ID DA PLACA =====================
+char deviceId[20];
+
+void gerarDeviceId() {
+  uint64_t chipid = ESP.getEfuseMac();
+  sprintf(deviceId, "%04X%08X",
+          (uint16_t)(chipid >> 32),
+          (uint32_t)chipid);
 }
 
-int precReadDigital() {
-  return digitalRead(PREC_DIGITAL_PIN);
-}
+// ===================== FREE RTOS =====================
 
-// =================== CONEXÃO REDE / MQTT ==================
-WiFiClient net;
-PubSubClient mqtt(net);
+SemaphoreHandle_t xSemTempoSemChuva;
 
-void ensureWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return;
+volatile uint32_t tempoSemChuva_s = 0;
+
+TaskHandle_t xTaskSensorChuvaHandle = NULL;
+TaskHandle_t xTaskMqttPubHandle     = NULL;
+
+// ===================== FUNÇÕES DE REDE =====================
+
+void conectaWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("[WiFi] Conectando");
+
   while (WiFi.status() != WL_CONNECTED) {
-    delay(250);
-    Serial.print(".");
+    delay(500);
   }
-  Serial.printf("\n[WiFi] OK. IP: %s\n", WiFi.localIP().toString().c_str());
 }
 
-void ensureMqtt() {
-  if (mqtt.connected()) return;
-  mqtt.setServer(MQTT_BROKER, MQTT_PORT);
-  String cid = "ESP32-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-  Serial.printf("[MQTT] Conectando em %s:%u ...\n", MQTT_BROKER, MQTT_PORT);
-  while (!mqtt.connected()) {
-    if (mqtt.connect(cid.c_str())) {
-      Serial.println("[MQTT] Conectado.");
-    } else {
-      Serial.printf("[MQTT] Falhou (state=%d). Tentando novamente...\n", mqtt.state());
-      delay(500);
+void conectaMQTT() {
+  while (!mqttClient.connected()) {
+    mqttClient.connect("esp32_chuva_client");
+    if (!mqttClient.connected()) {
+      delay(2000);
     }
   }
 }
 
-// ========================= SETUP ==========================
-void setup() {
-  Serial.begin(115200);
-  precInit();
-  ensureWiFi();
-  ensureMqtt();
-  Serial.println("[APP] Pronto. Publicando tempo sem chover em /chuva/dados...");
-}
+// ===================== TASK: SENSOR DE CHUVA =====================
+void tarefaSensorChuva(void *pvParameters) {
+  pinMode(PREC_DIGITAL_PIN, INPUT_PULLUP);
 
-// ========================== LOOP ==========================
-void loop() {
-  ensureWiFi();
-  ensureMqtt();
-  mqtt.loop();
+  for (;;) {
+    int leitura = digitalRead(PREC_DIGITAL_PIN);
 
-  static uint32_t lastPub = 0;
-
-  // Publica 1 vez por segundo
-  if (millis() - lastPub >= 1000) {
-    lastPub = millis();
-
-    int digitalValue = precReadDigital();
-
-    // =================== TEMPO SEM CHUVA ===================
-    static uint32_t ultimoTempoChuva = millis();
-    uint32_t agora = millis();
-
-    if (digitalValue == 0) {
-      // Sensor digital = 0 → ESTÁ CHOVENDO → reset do contador
-      ultimoTempoChuva = agora;
+    if (xSemaphoreTake(xSemTempoSemChuva, pdMS_TO_TICKS(100)) == pdTRUE) {
+      if (leitura == LOW) {
+        tempoSemChuva_s = 0;
+      } else {
+        tempoSemChuva_s++;
+      }
+      xSemaphoreGive(xSemTempoSemChuva);
     }
 
-    uint32_t tempoSemChuva = (agora - ultimoTempoChuva) / 1000; // segundos sem chuva
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+}
 
-    // Captura o ID único da placa
-    uint64_t chipid = ESP.getEfuseMac();
+// ===================== TASK: MQTT PUBLISH =====================
+void tarefaMqttPublish(void *pvParameters) {
+  const TickType_t intervaloEnvio = pdMS_TO_TICKS(2000); 
 
-    // Monta o payload com APENAS o tempo sem chover
+  for (;;) {
+    if (!mqttClient.connected()) {
+      conectaMQTT();
+    }
+    mqttClient.loop();
+
+    uint32_t tempoCopia = 0;
+    if (xSemaphoreTake(xSemTempoSemChuva, pdMS_TO_TICKS(100)) == pdTRUE) {
+      tempoCopia = tempoSemChuva_s;
+      xSemaphoreGive(xSemTempoSemChuva);
+    }
+
     char payload[128];
     snprintf(payload, sizeof(payload),
-      "{\"id\":\"%04X%08X\",\"sem_chuva_s\":%lu}",
-      (uint16_t)(chipid >> 32), (uint32_t)chipid,
-      tempoSemChuva
-    );
+             "{\"id\":\"%s\",\"tempo_sem_chuva\":%lu}",
+             deviceId,
+             (unsigned long)tempoCopia);
 
-    // Publica no MQTT
-    bool ok = mqtt.publish(TOPIC_PREC_ALL, payload);
-    Serial.printf("[MQTT] Publicado: %s -> %s\n", payload, ok ? "OK" : "FAIL");
+    bool ok = mqttClient.publish(TOPIC_PREC_ALL, payload);
+
+    if (ok) {
+      Serial.println(payload);
+    }
+
+    vTaskDelay(intervaloEnvio);
+  }
+}
+
+// ===================== SETUP / LOOP =====================
+
+void setup() {
+  Serial.begin(115200);
+
+  gerarDeviceId();
+  conectaWiFi();
+
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+
+  xSemTempoSemChuva = xSemaphoreCreateMutex();
+  if (xSemTempoSemChuva == NULL) {
+    while (true) {
+      delay(1000);
+    }
   }
 
-  delay(5);
+  xTaskCreatePinnedToCore(
+      tarefaSensorChuva,
+      "SensorChuva",
+      4096,
+      NULL,
+      1,
+      &xTaskSensorChuvaHandle,
+      1);
+
+  xTaskCreatePinnedToCore(
+      tarefaMqttPublish,
+      "MqttPublish",
+      4096,
+      NULL,
+      1,
+      &xTaskMqttPubHandle,
+      1);
+}
+
+void loop() {
+  vTaskDelay(pdMS_TO_TICKS(1000));
 }
