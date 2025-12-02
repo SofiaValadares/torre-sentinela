@@ -1,0 +1,10 @@
+#include "./includes.h"
+
+void conectaWiFi() {
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+}

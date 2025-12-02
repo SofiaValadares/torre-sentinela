@@ -1,61 +1,12 @@
-#include <Arduino.h>
-#include <WiFi.h>
-#include <PubSubClient.h>
-
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-
-// ===================== CONFIGURAÇÕES =====================
-#define PREC_DIGITAL_PIN 14  
-
-const char *WIFI_SSID      = "uaifai-tiradentes";   
-const char *WIFI_PASSWORD  = "bemvindoaocesar";     
-const char *MQTT_BROKER    = "172.26.67.82";       
-const uint16_t MQTT_PORT   = 1883;
-const char *TOPIC_PREC_ALL = "/chuva/dados";        
-
-WiFiClient espClient;
-PubSubClient mqttClient(espClient);
-
-// ===================== ID DA PLACA =====================
-char deviceId[20];
-
-void gerarDeviceId() {
-  uint64_t chipid = ESP.getEfuseMac();
-  sprintf(deviceId, "%04X%08X",
-          (uint16_t)(chipid >> 32),
-          (uint32_t)chipid);
-}
+#include "includes.h"
 
 // ===================== FREE RTOS =====================
-
 SemaphoreHandle_t xSemTempoSemChuva;
 
 volatile uint32_t tempoSemChuva_s = 0;
 
 TaskHandle_t xTaskSensorChuvaHandle = NULL;
 TaskHandle_t xTaskMqttPubHandle     = NULL;
-
-// ===================== FUNÇÕES DE REDE =====================
-
-void conectaWiFi() {
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-  }
-}
-
-void conectaMQTT() {
-  while (!mqttClient.connected()) {
-    mqttClient.connect("esp32_chuva_client");
-    if (!mqttClient.connected()) {
-      delay(2000);
-    }
-  }
-}
 
 // ===================== TASK: SENSOR DE CHUVA =====================
 void tarefaSensorChuva(void *pvParameters) {

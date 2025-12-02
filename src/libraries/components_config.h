@@ -1,0 +1,6 @@
+#ifndef CONFIG_COMPONENTS_H
+#define CONFIG_COMPONENTS_H
+
+#define PREC_DIGITAL_PIN 14     
+
+#endif
