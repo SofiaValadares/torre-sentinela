@@ -66,6 +66,7 @@ void setup() {
   Serial.begin(115200);
 
   gerarDeviceId();
+  Serial.printf("ID DA PLACA %s\n", deviceId);
   conectaWiFi();
 
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
