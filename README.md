@@ -62,6 +62,7 @@ Para montar o projeto, é necessário garantir uma série de requisitos de hardw
 ---
 
 ## 🔌 Montagem do Circuito
+<img width="659" height="856" alt="image" src="https://github.com/user-attachments/assets/e8b41f6c-f100-49eb-8d41-c63f8a554a15" />
 
 *(Adicione aqui imagens ou diagramas quando possível.)*
 
@@ -291,6 +292,7 @@ Com a placa **ESP32** conectada ao computador:
 1. Execute o **Build**
 2. Execute o **Upload**
 3. Abra o **Monitor Serial** para identificar o *ID* da placa, que será usado pelo sistema
+
 
 
 
