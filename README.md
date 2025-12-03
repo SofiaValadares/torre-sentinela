@@ -293,3 +293,4 @@ Com a placa **ESP32** conectada ao computador:
 3. Abra o **Monitor Serial** para identificar o *ID* da placa, que será usado pelo sistema
 
 
+
