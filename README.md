@@ -18,15 +18,15 @@ Desenvolvido com base na placa **ESP32**, o projeto tem como principal objetivo 
 <table>
   <tr>
     <td align="center">
-      <a href="https://github.com/SofiaValadares">
-        <img src="https://avatars.githubusercontent.com/u/113111708?v=4" width="100px;" alt="Foto Sofia Valadares"/><br>
-        <sub><b>Sofia Valadares</b></sub>
+      <a href="https://github.com/LuizaCalife">
+        <img src="https://avatars.githubusercontent.com/u/109395661?v=4" width="100px;" alt="Maria Luiza Calife"/><br>
+        <sub><b>Maria Luiza Calife</b></sub>
       </a>
     </td>
     <td align="center">
-      <a href="https://github.com/SofiaValadares">
-        <img src="https://avatars.githubusercontent.com/u/113111708?v=4" width="100px;" alt="Foto Sofia Valadares"/><br>
-        <sub><b>Sofia Valadares</b></sub>
+      <a href="https://github.com/dan-albuquerque">
+        <img src="https://avatars.githubusercontent.com/u/114592376?v=4" width="100px;" alt="Foto Danilo Albuquerque"/><br>
+        <sub><b>Danilo Albuquerque</b></sub>
       </a>
     </td>
     <td align="center">
@@ -63,8 +63,6 @@ Para montar o projeto, é necessário garantir uma série de requisitos de hardw
 
 ## 🔌 Montagem do Circuito
 <img width="659" height="856" alt="image" src="https://github.com/user-attachments/assets/e8b41f6c-f100-49eb-8d41-c63f8a554a15" />
-
-*(Adicione aqui imagens ou diagramas quando possível.)*
 
 ---
 
@@ -292,6 +290,7 @@ Com a placa **ESP32** conectada ao computador:
 1. Execute o **Build**
 2. Execute o **Upload**
 3. Abra o **Monitor Serial** para identificar o *ID* da placa, que será usado pelo sistema
+
 
 
 
