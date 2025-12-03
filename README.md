@@ -181,3 +181,4 @@ Com a placa **ESP32** conectada ao computador:
 1. Execute o **Build**
 2. Execute o **Upload**
 3. Abra o **Monitor Serial** para identificar o *ID* da placa, que será usado pelo sistema
+
