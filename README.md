@@ -49,23 +49,23 @@ tempo real, você acesse o repositorio da interface de usuario em: [https://gith
 
 
 # MONTANDO O PROJETO
+Para montar o projeto é necessario garantir uma serie de requisitos de hardware e software
 
-### Requisitos
-esp32
-sensor de precipitacao
+__Requisitos de Hardware__
+1. Módulo WiFi ESP32 Bluetooth 30 pinos
+2. Sensor de Precipitação
 
-Node-Red
-Visual Studio Code
-PlataformIO
+__Requisitos de Software__
+1. Node-RED
+2. Visual Studio Code com extenção do PlataformIO
 
-### Montagem do Circuito
+## Montagem do Circuito
 
-### Configurando o Ambiente
+## Clonando o Projeto
 
-### Clonando o Projeto
+## Node-RED
 
-### Node-RED
+## Configurando o Ambiente
 
-### Ultimas Configuracoes
+## Rodando o Projeto
 
-### Rodando o Projeto
