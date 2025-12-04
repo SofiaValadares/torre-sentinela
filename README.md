@@ -127,6 +127,31 @@ Em seguida, cole o conteúdo do JSON abaixo:
         ]
     },
     {
+        "id": "e119621f8beca91c",
+        "type": "aedes broker",
+        "z": "fad4f935c49154a2",
+        "name": "",
+        "mqtt_port": 1883,
+        "mqtt_ws_bind": "port",
+        "mqtt_ws_port": "",
+        "mqtt_ws_path": "",
+        "cert": "",
+        "key": "",
+        "ca": "",
+        "certname": "",
+        "keyname": "",
+        "caname": "",
+        "persistence_bind": "memory",
+        "dburl": "",
+        "usetls": false,
+        "x": 330,
+        "y": 340,
+        "wires": [
+            [],
+            []
+        ]
+    },
+    {
         "id": "c54388cad92ee27d",
         "type": "json",
         "z": "fad4f935c49154a2",
@@ -258,6 +283,14 @@ Em seguida, cole o conteúdo do JSON abaixo:
         "willMsg": {},
         "userProps": "",
         "sessionExpiry": ""
+    },
+    {
+        "id": "1f2b3181b7821fe4",
+        "type": "global-config",
+        "env": [],
+        "modules": {
+            "node-red-contrib-aedes": "0.15.0"
+        }
     }
 ]
 ```
@@ -290,6 +323,7 @@ Com a placa **ESP32** conectada ao computador:
 1. Execute o **Build**
 2. Execute o **Upload**
 3. Abra o **Monitor Serial** para identificar o *ID* da placa, que será usado pelo sistema
+
 
 
 
